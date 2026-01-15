@@ -1,0 +1,41 @@
+name: Daily Slide Refresh
+
+on:
+  schedule:
+    # This runs at 8:00 AM UTC every day (which is 3:00 AM EST)
+    - cron: '0 8 * * *'
+  workflow_dispatch: # This adds a "Run Workflow" button in GitHub for manual updates
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Required to allow the bot to push the updated HTML file back to your repo
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install node-fetch@2
+
+      - name: Run Slide Generator
+        env:
+          # These pull from the "Secrets" you added to GitHub Settings
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+        run: node preview.js
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add slides.html
+          git commit -m "Automated slide refresh: $(date)" || echo "No changes to commit"
+          git push
